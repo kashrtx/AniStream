@@ -1,35 +1,30 @@
 {
   "name": "anistream",
   "version": "1.0.0",
-  "description": "Anime streaming and tracking web app with adblocker",
-  "main": "index.js",
+  "description": "A modern anime streaming browser with extension support",
+  "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev",
+    "dev": "electron . --debug",
     "build": "electron-builder",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "pack": "electron-builder --dir"
   },
   "keywords": [
     "anime",
     "streaming",
-    "MALSync",
-    "tracking"
+    "electron",
+    "browser",
+    "extensions"
   ],
   "author": "",
   "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^24.6.4"
+  },
   "dependencies": {
     "electron-store": "^8.1.0",
-    "puppeteer": "^20.8.0",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "axios": "^1.4.0",
-    "cheerio": "^1.0.0-rc.12",
-    "uuid": "^9.0.0",
-    "electron-updater": "^6.1.4"
-  },
-  "devDependencies": {
-    "electron": "^26.2.1",
-    "electron-builder": "^24.6.4"
+    "uuid": "^9.0.1"
   },
   "build": {
     "appId": "com.anistream.app",
@@ -39,19 +34,25 @@
     },
     "files": [
       "**/*",
-      "!dist/**/*",
-      "!.git/**/*"
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
     "win": {
-      "icon": "assets/icon.png",
       "target": "nsis"
     },
     "mac": {
-      "icon": "assets/icon.png",
       "target": "dmg"
     },
     "linux": {
-      "icon": "assets/icon.png",
       "target": "AppImage"
     }
   }

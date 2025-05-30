@@ -1,68 +1,67 @@
 # AniStream
 
-A modern anime streaming and tracking application with MAL integration and ad blocking.
-
-![AniStream](assets/icon.svg)
+A modern anime streaming orientated browser that supports chrome extensions like MALSync for tracking application and UBlock Origin for ad blocking.
 
 ## Features
 
-- **Elegant, Modern UI**: Clean and intuitive interface that works across desktop and mobile devices
-- **Home Tab**: Quick access to recently watched and favorited anime with resume functionality
-- **Sources Management**: Add and manage streaming sites (like animepahe.ru, hianime.to)
-- **MAL Integration**: Track your anime progress with MyAnimeList directly from the app
-- **Ad Blocking**: Built-in ad blocking for a clean viewing experience
-- **Cloudflare Bypass**: Handles Cloudflare verification challenges
-- **Download Support**: Download episodes for offline viewing
-- **Web Scraping**: Uses advanced pattern matching to detect anime titles and episodes
-- **Data Persistence**: Remembers your watch history, favorites, and sources
+- **Modern Interface**: A sleek, responsive design optimized for anime streaming
+- **Extension Support**: Native browser extension support, including MALSync and uBlock Origin
+- **Smart URL Detection**: Automatically completes URLs and fetches site favicons
+- **Bookmarks & History**: Keep track of your favorite anime and continue watching where you left off
+- **Contained Browsing**: All content loads within the app, no external browser needed
+- **Customization**: Themes, default start page, and other personalization options
 
 ## Installation
 
-### Download Prebuilt Binaries
+### Prerequisites
 
-Coming soon!
+- Node.js (v14 or higher)
+- npm or yarn
 
-### Build from Source
+### Setup
 
 1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/AniStream.git
-cd AniStream
-```
+   ```
+   git clone https://github.com/yourusername/AniStream.git
+   cd AniStream
+   ```
 
 2. Install dependencies:
-```bash
-npm install
-```
+   ```
+   npm install
+   ```
 
 3. Start the application:
-```bash
-npm start
-```
-
-4. Build for your platform:
-```bash
-npm run build
-```
+   ```
+   npm start
+   ```
 
 ## Usage
 
 ### Adding Sources
 
-1. Go to the Sources tab
-2. Click "Add Source"
-3. Enter the name and URL of the anime streaming site
-4. Toggle "Auto-detection Support" based on the site's compatibility
+1. Navigate to the Sources tab
+2. Enter the URL of an anime streaming site (e.g., animepahe.ru, hianime.to)
+3. Click 'Add' - the app will automatically fetch the site's favicon and title
 
-### Watching Anime
+### Installing Extensions
 
-1. Browse to an anime site from your sources
-2. The app will automatically detect the anime and episode
-3. Your progress will be tracked and synchronized with MAL (if enabled)
+1. Go to the Settings tab
+2. Under 'Extensions', click 'Install Extension'
+3. Provide the path to an unpacked extension (e.g., downloaded MALSync or uBlock Origin)
 
-### Managing Favorites
+### Browsing Anime
 
-Click the heart icon on any anime card to add it to your favorites. You can quickly access your favorites from the Home tab.
+1. Click the 'Browse' button on any source to open it within the app
+2. Use the browser controls to navigate, bookmark, and track your progress
+3. Bookmarked anime will appear on your Home page for quick access
+
+## Extension Support
+
+AniStream uses Electron's Chrome extension API to support a variety of extensions. Tested and recommended extensions include:
+
+- **MALSync**: For synchronizing your watched anime with MyAnimeList
+- **uBlock Origin**: For blocking ads on streaming sites
 
 ## Contributing
 

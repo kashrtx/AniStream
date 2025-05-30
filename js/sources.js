@@ -1,326 +1,330 @@
-// Source management module for AniStream
+/**
+ * AniStream - Sources
+ * Handles anime source management
+ */
 
-// Default anime sources that are known to work
-const DEFAULT_SOURCES = [
-  {
-    id: 'animepahe',
-    name: 'AnimePahe',
-    url: 'https://animepahe.ru',
-    autoDetect: true,
-    icon: 'https://animepahe.ru/favicon.ico'
-  },
-  {
-    id: 'hianime',
-    name: 'HiAnime',
-    url: 'https://hianime.to',
-    autoDetect: true,
-    icon: 'https://hianime.to/favicon.ico'
-  },
-  {
-    id: 'gogoanime',
-    name: 'GogoAnime',
-    url: 'https://gogoanime.cl',
-    autoDetect: true,
-    icon: 'https://gogoanime.cl/favicon.ico'
-  }
-];
-
-// Predefined sites with their information
-const PREDEFINED_SITES = {
-  // AnimePahe
-  'animepahe.ru': {
-    name: 'AnimePahe',
-    icon: 'https://animepahe.ru/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.anime-title', 'title'],
-      episodeSelectors: ['.episode-title', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  },
-  'animepahe.com': {
-    name: 'AnimePahe',
-    icon: 'https://animepahe.com/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.anime-title', 'title'],
-      episodeSelectors: ['.episode-title', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  },
-  // HiAnime
-  'hianime.to': {
-    name: 'HiAnime',
-    icon: 'https://hianime.to/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.anime-name', 'title'],
-      episodeSelectors: ['.episode-info', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  },
-  // GogoAnime
-  'gogoanime.cl': {
-    name: 'GogoAnime',
-    icon: 'https://gogoanime.cl/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.anime_info_body_bg h1', 'title'],
-      episodeSelectors: ['.episode_page .active a', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  },
-  // 9anime
-  '9anime.to': {
-    name: '9anime',
-    icon: 'https://9anime.to/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.title', 'title'],
-      episodeSelectors: ['.episodes .active', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  },
-  // Zoro
-  'zoro.to': {
-    name: 'Zoro.to',
-    icon: 'https://zoro.to/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.film-name', 'title'],
-      episodeSelectors: ['.ssl-item.ep-item.active', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  },
-  // Crunchyroll
-  'crunchyroll.com': {
-    name: 'Crunchyroll',
-    icon: 'https://www.crunchyroll.com/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.show-title', 'title'],
-      episodeSelectors: ['.episode-title', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  },
-  // Animefever
-  'animefever.tv': {
-    name: 'AnimeFever',
-    icon: 'https://animefever.tv/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.anime-title', 'title'],
-      episodeSelectors: ['.episode-title', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  },
-  // AnimeHeaven
-  'animeheaven.ru': {
-    name: 'AnimeHeaven',
-    icon: 'https://animeheaven.ru/favicon.ico',
-    autoDetect: true,
-    patterns: {
-      titleSelectors: ['.title', 'title'],
-      episodeSelectors: ['.episode', 'title'],
-      episodeRegex: /episode\s*(\d+)/i
-    }
-  }
-};
-
-// Initialize sources module
+// Initialize sources module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  try {
-    // Add default sources if none exist
-    addDefaultSources();
-
-    // Add source form event listeners
-    setupSourceFormEvents();
-  } catch (error) {
-    console.error('Error initializing sources module:', error);
-  }
+  initSources();
 });
 
-// Add default sources if none exist
-async function addDefaultSources() {
-  try {
-    // Check if API is available
-    if (!window.api || !window.api.getStoreValue) {
-      console.error('API not available for sources module');
-      // Initialize with default sources in memory
-      window.appState = window.appState || {};
-      window.appState.sources = DEFAULT_SOURCES;
+// Global sources state
+let sourcesState = [];
+let autocompleteResults = [];
+
+/**
+ * Initialize the sources module
+ */
+async function initSources() {
+  // Get reference to DOM elements
+  const addSourceButton = document.getElementById('add-source-button');
+  const sourceUrlInput = document.getElementById('source-url-input');
+  const sourcesGrid = document.getElementById('sources-grid');
+  const autocompleteContainer = document.getElementById('source-autocomplete');
+  
+  // Load sources from storage
+  await loadSources();
+  
+  // Add event listeners
+  addSourceButton.addEventListener('click', () => addSource(sourceUrlInput.value));
+  
+  sourceUrlInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      if (autocompleteResults.length > 0 && autocompleteContainer.classList.contains('active')) {
+        // Select first autocomplete result if Enter pressed with autocomplete open
+        selectAutocompleteItem(autocompleteResults[0]);
+      } else {
+        addSource(sourceUrlInput.value);
+      }
+    }
+  });
+  
+  // Add autocomplete functionality
+  sourceUrlInput.addEventListener('input', debounce(async (e) => {
+    const query = e.target.value.trim();
+    if (query.length < 2) {
+      autocompleteContainer.classList.remove('active');
+      autocompleteContainer.innerHTML = '';
+      autocompleteResults = [];
       return;
     }
     
-    // Get current sources
-    const sources = await window.api.getStoreValue('sources');
-    
-    // If no sources, add defaults
-    if (!sources || sources.length === 0) {
-      // Try to save to store if API available
-      if (window.api.setStoreValue) {
-        await window.api.setStoreValue('sources', DEFAULT_SOURCES);
+    try {
+      // Search for sites that match the query
+      autocompleteResults = await window.anistream.searchSites(query);
+      
+      if (autocompleteResults.length > 0) {
+        renderAutocompleteResults(autocompleteResults, autocompleteContainer);
+        autocompleteContainer.classList.add('active');
+      } else {
+        autocompleteContainer.classList.remove('active');
+        autocompleteContainer.innerHTML = '';
       }
-      
-      // Update app state
-      window.appState = window.appState || {};
-      window.appState.sources = DEFAULT_SOURCES;
-      
-      // Update UI
-      if (window.updateSourcesTab) {
-        window.updateSourcesTab();
-      }
-      
-      console.log('Added default sources');
+    } catch (error) {
+      console.error('Failed to search sites:', error);
     }
+  }, 300));
+  
+  // Close autocomplete when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.source-input-wrapper')) {
+      autocompleteContainer.classList.remove('active');
+    }
+  });
+}
+
+/**
+ * Load sources from storage
+ */
+async function loadSources() {
+  try {
+    sourcesState = await window.anistream.getSources();
+    renderSources();
   } catch (error) {
-    console.error('Error adding default sources:', error);
+    console.error('Failed to load sources:', error);
+    sourcesState = [];
+  }
+}
+
+/**
+ * Add a new source
+ * @param {string} url - URL of the source to add
+ */
+async function addSource(url) {
+  if (!url || url.trim() === '') {
+    showNotification('Please enter a valid URL', 'error');
+    return;
+  }
+  
+  try {
+    // Show loading state
+    const sourceUrlInput = document.getElementById('source-url-input');
+    const addSourceButton = document.getElementById('add-source-button');
     
-    // Fall back to memory-only sources
-    window.appState = window.appState || {};
-    window.appState.sources = DEFAULT_SOURCES;
+    sourceUrlInput.disabled = true;
+    addSourceButton.disabled = true;
+    addSourceButton.innerHTML = '<i class="material-icons">hourglass_empty</i> Adding...';
+    
+    // Auto-complete URL if needed
+    let sourceUrl = url.trim();
+    
+    // Create source object
+    const source = {
+      url: sourceUrl,
+      title: sourceUrl,
+      favicon: window.anistream.urlToFaviconUrl(sourceUrl) || 'assets/images/default-favicon.png'
+    };
+    
+    // Try to fetch metadata
+    try {
+      const metadata = await window.anistream.fetchSiteMetadata(source.url);
+      if (metadata.title) {
+        source.title = metadata.title;
+      }
+      if (metadata.favicon) {
+        source.favicon = metadata.favicon;
+      }
+    } catch (metadataError) {
+      console.warn('Failed to fetch metadata:', metadataError);
+    }
+    
+    // Add to storage
+    sourcesState = await window.anistream.addSource(source);
+    
+    // Clear input and render
+    sourceUrlInput.value = '';
+    sourceUrlInput.disabled = false;
+    addSourceButton.disabled = false;
+    addSourceButton.innerHTML = '<i class="material-icons">add</i> Add';
+    
+    // Close autocomplete
+    document.getElementById('source-autocomplete').classList.remove('active');
     
     // Update UI
-    if (window.updateSourcesTab) {
-      window.updateSourcesTab();
-    }
-  }
-}
-
-// Setup event listeners for the source form
-function setupSourceFormEvents() {
-  try {
-    // When the source URL is entered, try to auto-detect the site info
-    document.addEventListener('change', (event) => {
-      if (event.target && event.target.id === 'source-url') {
-        autoDetectSourceInfo(event.target.value);
-      }
-    });
+    renderSources();
+    showNotification('Source added successfully', 'success');
   } catch (error) {
-    console.error('Error setting up source form events:', error);
+    console.error('Failed to add source:', error);
+    showNotification('Failed to add source', 'error');
+    
+    // Reset UI
+    document.getElementById('source-url-input').disabled = false;
+    document.getElementById('add-source-button').disabled = false;
+    document.getElementById('add-source-button').innerHTML = '<i class="material-icons">add</i> Add';
   }
 }
 
-// Auto-detect source information based on URL
-async function autoDetectSourceInfo(url) {
-  if (!url) return;
+/**
+ * Remove a source
+ * @param {string} sourceId - ID of the source to remove
+ */
+async function removeSource(sourceId) {
+  try {
+    // Confirm before removing
+    if (!confirm('Are you sure you want to remove this source?')) {
+      return;
+    }
+    
+    // Remove from storage
+    sourcesState = await window.anistream.removeSource(sourceId);
+    
+    // Update UI
+    renderSources();
+    showNotification('Source removed successfully', 'success');
+  } catch (error) {
+    console.error('Failed to remove source:', error);
+    showNotification('Failed to remove source', 'error');
+  }
+}
+
+/**
+ * Render the sources list
+ */
+function renderSources() {
+  const sourcesGrid = document.getElementById('sources-grid');
   
-  try {
-    // Extract the hostname
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname;
-    
-    // Look for the hostname in predefined sites
-    const siteInfo = PREDEFINED_SITES[hostname];
-    if (siteInfo) {
-      // Auto-fill the form with the predefined info
-      document.getElementById('source-name').value = siteInfo.name;
-      document.getElementById('source-auto-detect').checked = siteInfo.autoDetect;
-      
-      // Notify user
-      window.showToast(`Source "${siteInfo.name}" detected automatically`, 'success');
-    } else {
-      // Try to fetch the site's favicon and title
-      await fetchSiteInfo(url);
-    }
-  } catch (error) {
-    console.error('Error auto-detecting source info:', error);
-  }
-}
-
-// Fetch site information (favicon, title) using fetch or puppeteer
-async function fetchSiteInfo(url) {
-  try {
-    // Extract domain for default name
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname.replace('www.', '');
-    
-    // Set a default name based on the domain
-    const defaultName = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
-    document.getElementById('source-name').value = defaultName;
-    
-    // Notify user that we'll try to fetch the site info
-    window.showToast('Fetching site information...', 'info');
-    
-    // Get site info using puppeteer
-    const animeInfo = await window.api.extractAnimeInfo(url);
-    
-    if (animeInfo && animeInfo.title) {
-      // Update the name if we got a better one
-      document.getElementById('source-name').value = animeInfo.title;
-      window.showToast('Site information fetched successfully', 'success');
-    }
-  } catch (error) {
-    console.error('Error fetching site info:', error);
-    window.showToast('Could not fetch site information', 'warning');
-  }
-}
-
-// Get patterns for anime detection based on the source
-function getAnimeDetectionPatterns(source) {
-  // First check if we have predefined patterns for this source
-  try {
-    const hostname = new URL(source.url).hostname;
-    if (PREDEFINED_SITES[hostname] && PREDEFINED_SITES[hostname].patterns) {
-      return PREDEFINED_SITES[hostname].patterns;
-    }
-  } catch (e) {
-    console.error('Error getting hostname:', e);
+  // Clear current content
+  sourcesGrid.innerHTML = '';
+  
+  // Show empty state if no sources
+  if (sourcesState.length === 0) {
+    const emptyState = document.createElement('div');
+    emptyState.className = 'empty-state';
+    emptyState.innerHTML = `
+      <i class="material-icons">language</i>
+      <p>Add anime sources to get started</p>
+      <p class="sub-text">Try adding popular sites like animepahe.ru or hianime.to</p>
+    `;
+    sourcesGrid.appendChild(emptyState);
+    return;
   }
   
-  // Common patterns for anime sites
-  const commonPatterns = {
-    titleSelectors: [
-      'h1.anime-title',
-      'h1.title',
-      '.anime-title',
-      '.title',
-      'meta[property="og:title"]',
-      'title'
-    ],
-    episodeSelectors: [
-      '.episode-number',
-      '.episode',
-      '.ep-num',
-      'span:contains("Episode")',
-      'title'
-    ],
-    episodeRegex: /episode\s*(\d+)/i
+  // Create source cards for each source
+  sourcesState.forEach(source => {
+    const sourceCard = createSourceCard(source);
+    sourcesGrid.appendChild(sourceCard);
+  });
+}
+
+/**
+ * Create a source card element
+ * @param {Object} source - Source object
+ * @returns {HTMLElement} Source card element
+ */
+function createSourceCard(source) {
+  // Clone the template
+  const template = document.getElementById('source-card-template');
+  const sourceCard = template.content.cloneNode(true).querySelector('.source-card');
+  
+  // Set source data
+  sourceCard.dataset.id = source.id;
+  
+  // Set source info
+  sourceCard.querySelector('.source-title').textContent = source.title || 'Unknown Source';
+  sourceCard.querySelector('.source-url').textContent = source.url;
+  
+  // Set favicon
+  const favicon = source.favicon || 'assets/images/default-favicon.png';
+  sourceCard.querySelector('.source-icon img').src = favicon;
+  sourceCard.querySelector('.source-icon img').alt = source.title || 'Source Icon';
+  
+  // Add event listeners
+  sourceCard.querySelector('.browse-btn').addEventListener('click', () => {
+    openBrowser(source.url);
+  });
+  
+  sourceCard.querySelector('.remove-btn').addEventListener('click', () => {
+    removeSource(source.id);
+  });
+  
+  return sourceCard;
+}
+
+/**
+ * Render autocomplete results
+ * @param {Array} results - Autocomplete results
+ * @param {HTMLElement} container - Container element
+ */
+function renderAutocompleteResults(results, container) {
+  container.innerHTML = '';
+  
+  results.forEach(result => {
+    const itemElement = createAutocompleteItem(result);
+    container.appendChild(itemElement);
+  });
+}
+
+/**
+ * Create an autocomplete item element
+ * @param {Object} item - Autocomplete item
+ * @returns {HTMLElement} Autocomplete item element
+ */
+function createAutocompleteItem(item) {
+  // Clone the template
+  const template = document.getElementById('autocomplete-item-template');
+  const itemElement = template.content.cloneNode(true).querySelector('.autocomplete-item');
+  
+  // Set item data
+  itemElement.dataset.url = item.url;
+  
+  // Set item info
+  itemElement.querySelector('.autocomplete-title').textContent = item.title;
+  itemElement.querySelector('.autocomplete-url').textContent = item.url;
+  
+  // Set favicon
+  itemElement.querySelector('.autocomplete-icon img').src = item.favicon || 'assets/images/default-favicon.png';
+  itemElement.querySelector('.autocomplete-icon img').alt = item.title || 'Site Icon';
+  
+  // Add event listener
+  itemElement.addEventListener('click', () => {
+    selectAutocompleteItem(item);
+  });
+  
+  return itemElement;
+}
+
+/**
+ * Select an autocomplete item
+ * @param {Object} item - Selected autocomplete item
+ */
+function selectAutocompleteItem(item) {
+  const sourceUrlInput = document.getElementById('source-url-input');
+  sourceUrlInput.value = item.url;
+  
+  // Close autocomplete
+  document.getElementById('source-autocomplete').classList.remove('active');
+  
+  // Add source with selected item
+  addSource(item.url);
+}
+
+/**
+ * Debounce function to limit how often a function is called
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in milliseconds
+ * @returns {Function} Debounced function
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
   };
-  
-  return commonPatterns;
 }
 
-// Get source information based on URL
-function getSourceInfoFromUrl(url) {
-  if (!url) return null;
-  
-  try {
-    // Parse URL to get hostname
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname;
-    
-    // Check if we have predefined info for this hostname
-    if (PREDEFINED_SITES[hostname]) {
-      return {
-        name: PREDEFINED_SITES[hostname].name,
-        icon: PREDEFINED_SITES[hostname].icon,
-        autoDetect: PREDEFINED_SITES[hostname].autoDetect
-      };
-    }
-    
-    // If not, create default info
-    return {
-      name: hostname.split('.')[0].charAt(0).toUpperCase() + hostname.split('.')[0].slice(1),
-      icon: `${urlObj.protocol}//${hostname}/favicon.ico`,
-      autoDetect: true
-    };
-  } catch (error) {
-    console.error('Error getting source info from URL:', error);
-    return null;
+/**
+ * Show a notification message
+ * @param {string} message - Message to display
+ * @param {string} type - Type of notification (success, error, info)
+ */
+function showNotification(message, type = 'info') {
+  // Use global notification system if available
+  if (window.showNotification) {
+    window.showNotification(message, type);
+    return;
   }
-}
-
-// Export functions for use in other modules
-window.getAnimeDetectionPatterns = getAnimeDetectionPatterns;
-window.getSourceInfoFromUrl = getSourceInfoFromUrl; 
+  
+  // Simple console notification fallback
+  console.log(`Notification (${type}): ${message}`);
+} 

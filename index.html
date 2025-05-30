@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src *">
+  <title>AniStream</title>
+  <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+</head>
+<body>
+  <div id="app">
+    <div class="sidebar">
+      <div class="logo">
+        <img src="assets/images/logo.svg" alt="AniStream Logo">
+        <span>AniStream</span>
+      </div>
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="home">
+          <i class="material-icons">home</i>
+          <span>Home</span>
+        </button>
+        <button class="nav-tab" data-tab="sources">
+          <i class="material-icons">language</i>
+          <span>Sources</span>
+        </button>
+        <button class="nav-tab" data-tab="settings">
+          <i class="material-icons">settings</i>
+          <span>Settings</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="version">v1.0.0</span>
+      </div>
+    </div>
+    
+    <div class="main-content">
+      <!-- Home Tab Content -->
+      <div class="tab-content active" id="home-tab">
+        <header>
+          <h1>Welcome to AniStream</h1>
+          <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search anime...">
+            <button id="search-button"><i class="material-icons">search</i></button>
+          </div>
+        </header>
+        
+        <section class="continue-watching">
+          <h2>Continue Watching</h2>
+          <div class="anime-cards" id="continue-watching-list">
+            <!-- Dynamically populated with JS -->
+            <div class="empty-state">
+              <i class="material-icons">movie</i>
+              <p>Your recently watched anime will appear here</p>
+            </div>
+          </div>
+        </section>
+        
+        <section class="bookmarks">
+          <h2>Bookmarks</h2>
+          <div class="anime-cards" id="bookmarks-list">
+            <!-- Dynamically populated with JS -->
+            <div class="empty-state">
+              <i class="material-icons">bookmark</i>
+              <p>Your bookmarked anime will appear here</p>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- Sources Tab Content -->
+      <div class="tab-content" id="sources-tab">
+        <header>
+          <h1>Anime Sources</h1>
+          <div class="add-source-container">
+            <div class="source-input-wrapper">
+              <input type="text" id="source-url-input" placeholder="Add new source (e.g., animepahe.ru)">
+              <div class="autocomplete-container" id="source-autocomplete">
+                <!-- Autocomplete results will appear here -->
+              </div>
+            </div>
+            <button id="add-source-button"><i class="material-icons">add</i> Add</button>
+          </div>
+        </header>
+        
+        <section class="sources-list">
+          <div class="sources-grid" id="sources-grid">
+            <!-- Dynamically populated with JS -->
+            <div class="empty-state">
+              <i class="material-icons">language</i>
+              <p>Add anime sources to get started</p>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- Settings Tab Content -->
+      <div class="tab-content" id="settings-tab">
+        <header>
+          <h1>Settings</h1>
+        </header>
+        
+        <section class="settings-container">
+          <div class="settings-section">
+            <h2>Appearance</h2>
+            <div class="setting-item">
+              <label for="theme-select">Theme</label>
+              <select id="theme-select">
+                <option value="light">Light</option>
+                <option value="dark" selected>Dark</option>
+                <option value="system">System Default</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <h2>Playback</h2>
+            <div class="setting-item">
+              <label for="auto-play-next">Auto-play next episode</label>
+              <div class="toggle-switch">
+                <input type="checkbox" id="auto-play-next" checked>
+                <span class="toggle-slider"></span>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label for="default-page">Default page on startup</label>
+              <select id="default-page">
+                <option value="home" selected>Home</option>
+                <option value="sources">Sources</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <h2>Extensions</h2>
+            <div class="extensions-list" id="extensions-list">
+              <!-- Dynamically populated with JS -->
+              <div class="empty-state">
+                <i class="material-icons">extension</i>
+                <p>No extensions installed</p>
+                <p class="sub-text">Install extensions like MALSync for anime tracking and uBlock Origin for ad blocking</p>
+              </div>
+            </div>
+            <div class="extension-actions">
+              <button id="browse-extension-button" class="btn primary">
+                <i class="material-icons">folder_open</i> Browse Extensions
+              </button>
+              <button id="install-extension-button" class="btn primary">
+                <i class="material-icons">add</i> Install from URL
+              </button>
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <h2>About</h2>
+            <div class="about-info">
+              <p>AniStream is a modern anime streaming browser with extension support.</p>
+              <p>Version: 1.0.0</p>
+              <div class="disclaimer">
+                <p>This application is for educational purposes only. Please support the anime industry by using legal streaming services when available.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      
+      <!-- Browser/Webview Container -->
+      <div id="browser-container" class="hidden">
+        <div class="browser-toolbar">
+          <button id="browser-back" class="browser-btn">
+            <i class="material-icons">arrow_back</i>
+          </button>
+          <button id="browser-forward" class="browser-btn">
+            <i class="material-icons">arrow_forward</i>
+          </button>
+          <button id="browser-refresh" class="browser-btn">
+            <i class="material-icons">refresh</i>
+          </button>
+          <input type="text" id="browser-url" readonly>
+          <button id="browser-bookmark" class="browser-btn">
+            <i class="material-icons">bookmark_border</i>
+          </button>
+          <button id="browser-close" class="browser-btn">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+        <div id="webview-container">
+          <!-- Webview will be dynamically added here -->
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Templates -->
+  <template id="anime-card-template">
+    <div class="anime-card">
+      <div class="anime-thumbnail">
+        <img src="" alt="">
+        <div class="anime-progress">
+          <div class="progress-bar"></div>
+        </div>
+      </div>
+      <div class="anime-info">
+        <h3 class="anime-title"></h3>
+        <p class="anime-episode"></p>
+      </div>
+      <div class="anime-actions">
+        <button class="btn bookmark-btn">
+          <i class="material-icons">bookmark</i>
+        </button>
+        <button class="btn play-btn">
+          <i class="material-icons">play_arrow</i>
+        </button>
+      </div>
+    </div>
+  </template>
+  
+  <template id="source-card-template">
+    <div class="source-card">
+      <div class="source-icon">
+        <img src="" alt="">
+      </div>
+      <div class="source-info">
+        <h3 class="source-title"></h3>
+        <p class="source-url"></p>
+      </div>
+      <div class="source-actions">
+        <button class="btn browse-btn">
+          <i class="material-icons">open_in_browser</i>
+        </button>
+        <button class="btn remove-btn">
+          <i class="material-icons">delete</i>
+        </button>
+      </div>
+    </div>
+  </template>
+  
+  <template id="extension-item-template">
+    <div class="extension-item">
+      <div class="extension-icon">
+        <img src="" alt="">
+      </div>
+      <div class="extension-info">
+        <h3 class="extension-name"></h3>
+        <p class="extension-version"></p>
+      </div>
+      <div class="extension-actions">
+        <button class="btn toggle-btn">
+          <i class="material-icons">power_settings_new</i>
+        </button>
+        <button class="btn uninstall-btn">
+          <i class="material-icons">delete</i>
+        </button>
+      </div>
+    </div>
+  </template>
+  
+  <template id="autocomplete-item-template">
+    <div class="autocomplete-item">
+      <div class="autocomplete-icon">
+        <img src="" alt="">
+      </div>
+      <div class="autocomplete-info">
+        <div class="autocomplete-title"></div>
+        <div class="autocomplete-url"></div>
+      </div>
+    </div>
+  </template>
+  
+  <!-- Main Scripts -->
+  <script src="js/navigation.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/sources.js"></script>
+  <script src="js/browser.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/extensions.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html> 
