@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AniStream</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <!-- App Frame -->
+    <div class="app-frame">
+      <div class="titlebar">
+        <div class="title">AniStream</div>
+        <div class="window-controls">
+          <button id="minimize-button" class="control-button"><i class="fas fa-window-minimize"></i></button>
+          <button id="maximize-button" class="control-button"><i class="fas fa-window-maximize"></i></button>
+          <button id="close-button" class="control-button"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+      
+      <!-- Main content -->
+      <div class="app-content">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+          <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="home">
+              <i class="fas fa-home"></i>
+              <span>Home</span>
+            </button>
+            <button class="nav-tab" data-tab="sources">
+              <i class="fas fa-server"></i>
+              <span>Sources</span>
+            </button>
+            <button class="nav-tab" data-tab="settings">
+              <i class="fas fa-cog"></i>
+              <span>Settings</span>
+            </button>
+          </div>
+          
+          <div class="sidebar-footer">
+            <button id="update-button" class="update-button hidden">
+              <i class="fas fa-download"></i>
+              <span>Update Available</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Tab Content -->
+        <div class="tab-content">
+          <!-- Home Tab -->
+          <div id="home-tab" class="tab-pane active">
+            <div class="section-title">
+              <h2>Continue Watching</h2>
+            </div>
+            
+            <div class="anime-grid" id="continue-watching-grid">
+              <!-- Continue watching cards will be dynamically inserted here -->
+              <div class="empty-state">
+                <i class="fas fa-film"></i>
+                <p>Your recently watched anime will appear here</p>
+              </div>
+            </div>
+            
+            <div class="section-title">
+              <h2>Favorites</h2>
+            </div>
+            
+            <div class="anime-grid" id="favorites-grid">
+              <!-- Favorites cards will be dynamically inserted here -->
+              <div class="empty-state">
+                <i class="fas fa-heart"></i>
+                <p>Your favorite anime will appear here</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Sources Tab -->
+          <div id="sources-tab" class="tab-pane">
+            <div class="section-header">
+              <div class="section-title">
+                <h2>Anime Sources</h2>
+              </div>
+              <button id="add-source-button" class="action-button">
+                <i class="fas fa-plus"></i>
+                <span>Add Source</span>
+              </button>
+            </div>
+            
+            <div class="sources-list" id="sources-list">
+              <!-- Source cards will be dynamically inserted here -->
+              <div class="empty-state">
+                <i class="fas fa-server"></i>
+                <p>No sources added yet</p>
+                <button id="add-first-source-button" class="action-button">
+                  <i class="fas fa-plus"></i>
+                  <span>Add Your First Source</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Settings Tab -->
+          <div id="settings-tab" class="tab-pane">
+            <div class="section-title">
+              <h2>Application Settings</h2>
+            </div>
+            
+            <div class="settings-container">
+              <!-- MALSync Settings -->
+              <div class="settings-section">
+                <h3>MAL Integration</h3>
+                
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>Enable MAL Sync</span>
+                    <p class="setting-description">Track your anime progress with MALSync (supports MyAnimeList, AniList, Kitsu, and Simkl)</p>
+                  </div>
+                  <div class="setting-control">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="mal-sync-toggle" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                
+                <div class="setting-item mal-login-section">
+                  <button id="mal-login-button" class="action-button">
+                    <i class="fas fa-cog"></i>
+                    <span>MALSync Settings</span>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Application Settings -->
+              <div class="settings-section">
+                <h3>Appearance</h3>
+                
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>Theme</span>
+                    <p class="setting-description">Choose your preferred application theme</p>
+                  </div>
+                  <div class="setting-control">
+                    <select id="theme-select" class="settings-select">
+                      <option value="dark">Dark Theme</option>
+                      <option value="light">Light Theme</option>
+                      <option value="system">System Default</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Content Settings -->
+              <div class="settings-section">
+                <h3>Content</h3>
+                
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>Enable Ad Blocking</span>
+                    <p class="setting-description">Block ads and popups while browsing anime sites</p>
+                  </div>
+                  <div class="setting-control">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="adblock-toggle" checked>
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>Download Location</span>
+                    <p class="setting-description">Choose where to save downloaded episodes</p>
+                  </div>
+                  <div class="setting-control download-path-control">
+                    <input type="text" id="download-path" class="settings-input" readonly>
+                    <button id="browse-button" class="browse-button">
+                      <i class="fas fa-folder-open"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Backup & Restore -->
+              <div class="settings-section">
+                <h3>Backup & Restore</h3>
+                
+                <div class="setting-item backup-restore-buttons">
+                  <button id="export-button" class="action-button">
+                    <i class="fas fa-download"></i>
+                    <span>Export Data</span>
+                  </button>
+                  <button id="import-button" class="action-button">
+                    <i class="fas fa-upload"></i>
+                    <span>Import Data</span>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- About Section -->
+              <div class="settings-section">
+                <h3>About</h3>
+                
+                <div class="about-info">
+                  <p>AniStream v1.0.0</p>
+                  <p>A modern anime streaming app with MAL integration</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modals -->
+    <!-- Add Source Modal -->
+    <div id="add-source-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Add Anime Source</h2>
+          <button class="close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="source-name">Source Name</label>
+            <input type="text" id="source-name" placeholder="e.g., AnimeWorld">
+          </div>
+          <div class="form-group">
+            <label for="source-url">Source URL</label>
+            <input type="text" id="source-url" placeholder="e.g., https://animeworld.to">
+          </div>
+          <div class="form-group">
+            <div class="setting-label">
+              <span>Auto-detection Support</span>
+              <p class="setting-description">Enable if the site supports automatic scraping</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="source-auto-detect" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-add-source" class="cancel-button">Cancel</button>
+          <button id="save-source" class="action-button">Save Source</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Anime Details Modal -->
+    <div id="anime-details-modal" class="modal">
+      <div class="modal-content anime-details-content">
+        <div class="modal-header">
+          <button class="close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body anime-details-body">
+          <!-- Will be dynamically populated -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Cloudflare Challenge Modal -->
+    <div id="cloudflare-modal" class="modal">
+      <div class="modal-content cloudflare-content">
+        <div class="modal-header">
+          <h2>Cloudflare Challenge</h2>
+          <button class="close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body cloudflare-body">
+          <p>This site requires completing a Cloudflare security check.</p>
+          <div class="cloudflare-container">
+            <webview id="cloudflare-webview" src="about:blank"></webview>
+          </div>
+          <div class="cloudflare-message">
+            <p>Complete the challenge in the browser above, then click "Continue"</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cloudflare-continue" class="action-button">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Scripts -->
+  <script src="../js/app.js"></script>
+  <script src="../js/ui.js"></script>
+  <script src="../js/sources.js"></script>
+  <script src="../js/malSync.js"></script>
+  <script src="../js/browserAutomation.js"></script>
+</body>
+</html> 
