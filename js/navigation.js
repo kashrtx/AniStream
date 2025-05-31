@@ -5,6 +5,14 @@
 
 // Initialize navigation when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('[Renderer Process - navigation.js] DOMContentLoaded. Checking window.anistream...');
+  if (window.anistream) {
+    console.log('[Renderer Process - navigation.js] window.anistream is DEFINED:', window.anistream);
+  } else {
+    console.error('[Renderer Process - navigation.js] window.anistream is UNDEFINED.');
+  }
+  console.log('[Renderer Process - navigation.js] typeof window.anistream:', typeof window.anistream);
+
   initNavigation();
 });
 

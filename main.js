@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, dialog, shell, net } = require('electron');
+const { app, BrowserWindow, ipcMain, session, dialog, shell, net, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
@@ -29,6 +29,13 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 function createWindow() {
+  const preloadPath = path.join(__dirname, 'preload.js');
+  console.log('[Main Process] Preload script path:', preloadPath);
+  // Also check if the file exists, for sanity
+  if (!fs.existsSync(preloadPath)) {
+      console.error('[Main Process] PRELOAD SCRIPT DOES NOT EXIST AT PATH:', preloadPath);
+  }
+
   // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -36,7 +43,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: preloadPath, // Use the variable
       nodeIntegration: false,
       contextIsolation: true,
       webviewTag: true, // Enable webviews

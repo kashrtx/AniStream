@@ -1,3 +1,4 @@
+console.log('[Preload Script] Started execution.');
 const { contextBridge, ipcRenderer, dialog } = require('electron');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
@@ -371,5 +372,11 @@ const aniStreamAPI = {
   }
 };
 
-// Expose API to renderer process
-contextBridge.exposeInMainWorld('anistream', aniStreamAPI); 
+console.log('[Preload Script] aniStreamAPI object:', aniStreamAPI);
+try {
+  contextBridge.exposeInMainWorld('anistream', aniStreamAPI);
+  console.log('[Preload Script] Successfully exposed anistream API via contextBridge.');
+} catch (error) {
+  console.error('[Preload Script] Error exposing API via contextBridge:', error);
+}
+console.log('[Preload Script] Finished execution.');
