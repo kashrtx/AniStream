@@ -166,28 +166,17 @@
         </section>
       </div>
       
-      <!-- Browser/Webview Container -->
-      <div id="browser-container" class="hidden">
-        <div class="browser-toolbar">
-          <button id="browser-back" class="browser-btn">
-            <i class="material-icons">arrow_back</i>
-          </button>
-          <button id="browser-forward" class="browser-btn">
-            <i class="material-icons">arrow_forward</i>
-          </button>
-          <button id="browser-refresh" class="browser-btn">
-            <i class="material-icons">refresh</i>
-          </button>
-          <input type="text" id="browser-url" readonly>
-          <button id="browser-bookmark" class="browser-btn">
-            <i class="material-icons">bookmark_border</i>
-          </button>
-          <button id="browser-close" class="browser-btn">
-            <i class="material-icons">close</i>
-          </button>
+      <!-- Browser View (Webview Container) -->
+      <div id="browser-view" class="browser-view" style="display: none;">
+        <div class="browser-controls">
+          <button id="browser-back-button" title="Back"><i class="material-icons">arrow_back</i></button>
+          <button id="browser-forward-button" title="Forward"><i class="material-icons">arrow_forward</i></button>
+          <button id="browser-reload-button" title="Reload"><i class="material-icons">refresh</i></button>
+          <input type="text" id="browser-address-bar" readonly />
+          <button id="browser-close-button" title="Close Browser"><i class="material-icons">close</i></button>
         </div>
         <div id="webview-container">
-          <!-- Webview will be dynamically added here -->
+          <!-- Webview will be injected here or can be static -->
         </div>
       </div>
     </div>
@@ -272,8 +261,8 @@
   <!-- Main Scripts -->
   <script src="js/navigation.js"></script>
   <script src="js/home.js"></script>
-  <script src="js/sources.js"></script>
   <script src="js/browser.js"></script>
+  <script src="js/sources.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/extensions.js"></script>
   <script src="js/app.js"></script>

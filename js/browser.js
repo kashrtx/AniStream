@@ -1,192 +1,152 @@
-/**
- * AniStream - Browser
- * Handles the in-app browser with webview
- */
+// js/browser.js
 
-// Initialize browser when DOM is loaded
+let activeWebview = null;
+let browserViewEl = null;
+let webviewContainerEl = null;
+let backButtonEl, forwardButtonEl, reloadButtonEl, closeButtonEl, addressBarEl = null;
+
+// Expose functions to global window object for access from other scripts
+window.openBrowser = openBrowser;
+window.closeBrowser = closeBrowser;
+
 document.addEventListener('DOMContentLoaded', () => {
-  initBrowser();
+  // Get references to browser view elements once DOM is loaded
+  browserViewEl = document.getElementById('browser-view');
+  webviewContainerEl = document.getElementById('webview-container');
+  backButtonEl = document.getElementById('browser-back-button');
+  forwardButtonEl = document.getElementById('browser-forward-button');
+  reloadButtonEl = document.getElementById('browser-reload-button');
+  closeButtonEl = document.getElementById('browser-close-button');
+  addressBarEl = document.getElementById('browser-address-bar');
+
+  // Attach event listeners for controls
+  if(backButtonEl) {
+    backButtonEl.addEventListener('click', () => {
+      if (activeWebview && activeWebview.canGoBack()) {
+        activeWebview.goBack();
+      }
+    });
+  }
+
+  if(forwardButtonEl) {
+    forwardButtonEl.addEventListener('click', () => {
+      if (activeWebview && activeWebview.canGoForward()) {
+        activeWebview.goForward();
+      }
+    });
+  }
+
+  if(reloadButtonEl) {
+    reloadButtonEl.addEventListener('click', () => {
+      if (activeWebview) {
+        activeWebview.reload();
+      }
+    });
+  }
+
+  if(closeButtonEl) {
+    closeButtonEl.addEventListener('click', () => {
+      closeBrowser();
+    });
+  }
 });
 
-// Global state
-let currentWebview = null;
-
-/**
- * Initialize the browser module
- */
-function initBrowser() {
-  // Get reference to DOM elements
-  const browserContainer = document.getElementById('browser-container');
-  const browserBack = document.getElementById('browser-back');
-  const browserForward = document.getElementById('browser-forward');
-  const browserRefresh = document.getElementById('browser-refresh');
-  const browserClose = document.getElementById('browser-close');
-  const browserUrl = document.getElementById('browser-url');
-  
-  // Add event listeners
-  browserBack.addEventListener('click', goBack);
-  browserForward.addEventListener('click', goForward);
-  browserRefresh.addEventListener('click', refresh);
-  browserClose.addEventListener('click', closeBrowser);
-}
-
-/**
- * Open the browser with a URL
- * @param {string} url - URL to open
- */
 function openBrowser(url) {
-  // Get reference to DOM elements
-  const browserContainer = document.getElementById('browser-container');
-  const webviewContainer = document.getElementById('webview-container');
-  const browserUrl = document.getElementById('browser-url');
-  
-  // Clear previous webview
-  webviewContainer.innerHTML = '';
-  
-  // Create new webview
-  const webview = document.createElement('webview');
-  webview.src = url;
-  webview.allowpopups = true;
-  
-  // Set up webview events
-  webview.addEventListener('dom-ready', () => {
-    // Update URL display
-    browserUrl.value = webview.getURL();
+  // Ensure elements are fetched (they might not be if openBrowser is called prematurely)
+  if (!browserViewEl) browserViewEl = document.getElementById('browser-view');
+  if (!webviewContainerEl) webviewContainerEl = document.getElementById('webview-container');
+  if (!backButtonEl) backButtonEl = document.getElementById('browser-back-button');
+  if (!forwardButtonEl) forwardButtonEl = document.getElementById('browser-forward-button');
+  if (!reloadButtonEl) reloadButtonEl = document.getElementById('browser-reload-button');
+  if (!closeButtonEl) closeButtonEl = document.getElementById('browser-close-button');
+  if (!addressBarEl) addressBarEl = document.getElementById('browser-address-bar');
+
+  if (!browserViewEl || !webviewContainerEl) {
+    console.error('Browser view critical elements not found. Check HTML structure and IDs.');
+    return;
+  }
+
+  if (!activeWebview) {
+    const webview = document.createElement('webview');
+    webview.id = 'site-webview';
+    webview.setAttribute('allowpopups', 'true');
+    webview.setAttribute('partition', 'persist:default'); // For extensions in default session
+    webview.style.width = '100%';
+    webview.style.height = '100%';
+    const webviewPartition = webview.getAttribute('partition');
+    console.log(`Webview created for ${url} with partition: ${webviewPartition}. Extensions from this session should be available.`);
     
-    // Enable/disable navigation buttons based on webview state
-    updateNavButtons(webview);
-  });
-  
-  webview.addEventListener('did-navigate', () => {
-    browserUrl.value = webview.getURL();
-    updateNavButtons(webview);
-  });
-  
-  webview.addEventListener('did-navigate-in-page', () => {
-    browserUrl.value = webview.getURL();
-    updateNavButtons(webview);
-  });
-  
-  webview.addEventListener('page-title-updated', (event) => {
-    // Save the title for history/bookmark purposes
-    webview.pageTitle = event.title;
-  });
-  
-  webview.addEventListener('page-favicon-updated', (event) => {
-    // Save favicon URL for history/bookmark purposes
-    if (event.favicons && event.favicons.length > 0) {
-      webview.favicon = event.favicons[0];
+    // Clear previous webview if any, before appending a new one
+    while (webviewContainerEl.firstChild) {
+        webviewContainerEl.removeChild(webviewContainerEl.firstChild);
     }
-  });
-  
-  // Add webview to container
-  webviewContainer.appendChild(webview);
-  currentWebview = webview;
-  
-  // Show browser container
-  browserContainer.classList.remove('hidden');
-}
+    webviewContainerEl.appendChild(webview);
+    activeWebview = webview; // Assign to activeWebview AFTER it's added to DOM and configured
 
-/**
- * Update navigation buttons based on webview state
- * @param {HTMLElement} webview - The webview element
- */
-function updateNavButtons(webview) {
-  const browserBack = document.getElementById('browser-back');
-  const browserForward = document.getElementById('browser-forward');
-  
-  // Enable/disable back button
-  browserBack.disabled = !webview.canGoBack();
-  browserBack.classList.toggle('disabled', !webview.canGoBack());
-  
-  // Enable/disable forward button
-  browserForward.disabled = !webview.canGoForward();
-  browserForward.classList.toggle('disabled', !webview.canGoForward());
-}
+    // Attach webview event listeners
+    activeWebview.addEventListener('did-navigate', (event) => {
+      if (addressBarEl) addressBarEl.value = event.url;
+      updateNavButtonsState();
+    });
 
-/**
- * Navigate back in webview history
- */
-function goBack() {
-  if (currentWebview && currentWebview.canGoBack()) {
-    currentWebview.goBack();
+    activeWebview.addEventListener('page-title-updated', (event) => {
+      console.log('Page title:', event.title);
+      // Potentially: document.title = event.title; // If we want to change main window title
+    });
+
+    activeWebview.addEventListener('dom-ready', () => {
+      updateNavButtonsState();
+    });
+
+    activeWebview.addEventListener('enter-html-full-screen', () => {
+      console.log('Webview requested full screen.');
+      // IPC call to main process would be needed here:
+      // if (window.anistream && window.anistream.setMainFullScreen) window.anistream.setMainFullScreen(true);
+    });
+
+    activeWebview.addEventListener('leave-html-full-screen', () => {
+      console.log('Webview left full screen.');
+      // IPC call to main process would be needed here:
+      // if (window.anistream && window.anistream.setMainFullScreen) window.anistream.setMainFullScreen(false);
+    });
+
+    activeWebview.addEventListener('new-window', (event) => {
+      event.preventDefault(); // Prevent new Electron window
+      if (activeWebview) {
+        activeWebview.loadURL(event.url); // Load in the current webview
+      }
+      console.log('Prevented new window; loading in current webview:', event.url);
+    });
   }
-}
 
-/**
- * Navigate forward in webview history
- */
-function goForward() {
-  if (currentWebview && currentWebview.canGoForward()) {
-    currentWebview.goForward();
+  if (url) {
+    activeWebview.src = url;
   }
+
+  browserViewEl.style.display = 'flex'; // Show the browser view
+  updateNavButtonsState(); // Update button states
 }
 
-/**
- * Refresh the current page
- */
-function refresh() {
-  if (currentWebview) {
-    currentWebview.reload();
-  }
-}
-
-/**
- * Close the browser
- */
 function closeBrowser() {
-  const browserContainer = document.getElementById('browser-container');
-  browserContainer.classList.add('hidden');
-  
-  // Optionally stop the webview
-  if (currentWebview) {
-    currentWebview.stop();
-    // You might want to destroy or cleanup the webview here
+  if (browserViewEl) {
+    browserViewEl.style.display = 'none'; // Hide the browser view
+  }
+  if (activeWebview) {
+    activeWebview.src = 'about:blank'; // Clear the page to free up resources
+    // Optionally, remove the webview from DOM if it's recreated each time openBrowser is called
+    // if (webviewContainerEl) webviewContainerEl.innerHTML = '';
+    // activeWebview = null;
   }
 }
 
-/**
- * Add current page to bookmarks
- */
-function addToBookmarks() {
-  if (!currentWebview) return;
-  
-  const url = currentWebview.getURL();
-  const title = currentWebview.pageTitle || url;
-  const favicon = currentWebview.favicon || window.anistream.urlToFaviconUrl(url);
-  
-  const bookmark = {
-    url,
-    title,
-    favicon,
-    type: 'website'
-  };
-  
-  window.anistream.addBookmark(bookmark)
-    .then(() => {
-      showNotification('Added to bookmarks', 'success');
-    })
-    .catch(error => {
-      console.error('Failed to add bookmark:', error);
-      showNotification('Failed to add bookmark', 'error');
-    });
+function updateNavButtonsState() {
+  if (!activeWebview) { // If no webview, disable all
+    if (backButtonEl) backButtonEl.disabled = true;
+    if (forwardButtonEl) forwardButtonEl.disabled = true;
+    // reloadButtonEl might still be enabled or disabled based on preference
+    return;
+  }
+  // Enable/disable based on webview's navigation state
+  if (backButtonEl) backButtonEl.disabled = !activeWebview.canGoBack();
+  if (forwardButtonEl) forwardButtonEl.disabled = !activeWebview.canGoForward();
 }
-
-/**
- * Update watch history
- * @param {Object} animeInfo - Information about the anime being watched
- */
-function updateWatchHistory(animeInfo) {
-  if (!animeInfo || !animeInfo.animeId) return;
-  
-  const historyItem = {
-    ...animeInfo,
-    url: currentWebview ? currentWebview.getURL() : '',
-    lastWatched: Date.now()
-  };
-  
-  window.anistream.addHistory(historyItem)
-    .catch(error => {
-      console.error('Failed to update watch history:', error);
-    });
-} 

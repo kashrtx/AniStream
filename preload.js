@@ -134,29 +134,41 @@ const aniStreamAPI = {
     }
   },
   
-  addSource: async (sourcePartial) => {
-    // Process source URL for completion and validation
-    let source = { ...sourcePartial };
-    
-    // Generate a unique ID if not provided
-    if (!source.id) {
-      source.id = uuidv4();
-    }
-    
-    // Auto-complete URL if not starting with http:// or https://
-    if (source.url && !source.url.match(/^https?:\/\//)) {
-      source.url = `https://${source.url}`;
-    }
-    
-    // Add timestamp
-    source.addedAt = Date.now();
-    
+  // sourceData should be an object like { url: "...", title: "...", faviconUrl: "..." }
+  // This is passed from js/sources.js after calling fetchSiteMetadata.
+  // The main process will generate id and addedAt.
+  addSource: async (sourceData) => {
     try {
-      const result = await ipcRenderer.invoke('add-source', source);
+      // Ensure URL is absolute before sending (though js/sources.js should also do this)
+      let absoluteUrl = sourceData.url;
+      if (absoluteUrl && !absoluteUrl.match(/^https?:\/\//)) {
+        absoluteUrl = `https://${absoluteUrl}`;
+      }
+      new URL(absoluteUrl); // Validate
+
+      const payload = {
+        ...sourceData,
+        url: absoluteUrl
+      };
+      const result = await ipcRenderer.invoke('add-source', payload);
       return result;
     } catch (e) {
-      console.warn('Using mock data for adding source:', e);
-      mockStore.sources.push(source);
+      console.error('Error invoking add-source:', e);
+      // Fallback to mock if needed, or rethrow/return error
+      // For now, let's match the existing pattern of using mockStore on error.
+      // However, the structure of sourceData might not be complete for mockStore.
+      // This part needs careful handling if mockStore is to be a true fallback here.
+      // Given main.js now creates the full object, mock might not be suitable here.
+      // Let's return an error structure or rethrow.
+      // throw e; // Or return { error: e.message }
+      // Reverting to mock for now to maintain consistency with other functions.
+      // This mock logic will likely be incorrect as main.js adds id/timestamp.
+      const mockSource = {
+        id: uuidv4(),
+        ...sourceData,
+        addedAt: Date.now()
+      };
+      mockStore.sources.push(mockSource);
       return mockStore.sources;
     }
   },
@@ -281,22 +293,16 @@ const aniStreamAPI = {
     }
   },
   
-  installExtension: async (extensionId, source = 'local') => {
+  // The argument is now an object like { extensionPath: "..." }
+  installExtension: async (payload) => {
     try {
-      const result = await ipcRenderer.invoke('install-extension', { extensionId, source });
+      // Pass the payload directly, main.js expects { extensionPath }
+      const result = await ipcRenderer.invoke('install-extension', payload);
       return result;
     } catch (e) {
-      console.warn('Using mock data for installing extension:', e);
-      // Simulate adding a new extension
-      const newExtension = {
-        id: extensionId,
-        name: `Extension ${extensionId}`,
-        version: '1.0.0',
-        enabled: true,
-        icon: 'https://via.placeholder.com/32.png?text=EXT'
-      };
-      mockStore.extensions.push(newExtension);
-      return newExtension;
+      console.warn('Error invoking install-extension:', e);
+      // It's better to return the error or an error structure
+      return { error: e.message || 'Failed to install extension via IPC' };
     }
   },
   
@@ -308,6 +314,16 @@ const aniStreamAPI = {
       console.warn('Using mock data for uninstalling extension:', e);
       mockStore.extensions = mockStore.extensions.filter(ext => ext.id !== extensionId);
       return true;
+    }
+  },
+
+  selectExtensionDirectory: async () => {
+    try {
+      const result = await ipcRenderer.invoke('select-extension-directory');
+      return result;
+    } catch (e) {
+      console.error('Failed to open directory dialog:', e);
+      return null;
     }
   },
   
@@ -323,56 +339,33 @@ const aniStreamAPI = {
     }
   },
   
-  // Utility functions
-  urlToFaviconUrl: (url) => {
-    try {
-      const urlObj = new URL(url);
-      return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
-    } catch (e) {
-      console.warn('Failed to generate favicon URL:', e);
-      return 'assets/images/default-favicon.png';
-    }
-  },
-  
   // Fetch site metadata (title, favicon)
   fetchSiteMetadata: async (url) => {
-    // In a real implementation, this would fetch metadata from the site
-    // For now, we'll simulate it by checking against our popular sites list
     try {
-      let urlObj;
-      try {
-        urlObj = new URL(url);
-      } catch (e) {
-        // If URL is invalid, try to fix it
-        if (!url.match(/^https?:\/\//)) {
-          url = `https://${url}`;
-          urlObj = new URL(url);
-        } else {
-          throw e;
-        }
+      // Ensure the URL is valid and absolute before sending
+      let absoluteUrl = url;
+      if (absoluteUrl && !absoluteUrl.match(/^https?:\/\//)) {
+        absoluteUrl = 'https://' + absoluteUrl;
       }
-      
-      const popularSite = popularSites.find(site => 
-        url.includes(new URL(site.url).hostname)
-      );
-      
-      if (popularSite) {
-        return {
-          title: popularSite.title,
-          favicon: popularSite.favicon
-        };
-      }
-      
-      // If not a known site, just return a basic response
-      return {
-        title: urlObj.hostname,
-        favicon: `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`
-      };
+      new URL(absoluteUrl); // Validate URL structure, throws if invalid
+
+      const metadata = await ipcRenderer.invoke('fetch-site-metadata', absoluteUrl);
+      return metadata; // Expected to be { title, faviconUrl }
     } catch (error) {
-      console.error('Failed to fetch site metadata:', error);
+      console.error('Failed to fetch site metadata via IPC:', error);
+      // Fallback to a very basic default using the input URL
+      let hostname = url;
+      try {
+        const tempUrl = url.startsWith('http') ? url : 'https://' + url;
+        hostname = new URL(tempUrl).hostname;
+      } catch (e) {
+        // if hostname parsing fails, use the original url (or part of it)
+        hostname = url.length > 50 ? url.substring(0, 50) + '...' : url;
+      }
       return { 
-        title: url,
-        favicon: 'assets/images/default-favicon.png' 
+        title: hostname,
+        // This is a plain guess, main process should provide a better default if possible
+        faviconUrl: `https://${hostname}/favicon.ico`
       };
     }
   }

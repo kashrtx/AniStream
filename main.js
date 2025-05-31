@@ -1,7 +1,8 @@
-const { app, BrowserWindow, ipcMain, session, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, session, dialog, shell, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
+const { v4: uuidv4 } = require('uuid');
 
 // Initialize the data store
 const store = new Store({
@@ -14,7 +15,8 @@ const store = new Store({
       theme: 'dark',
       autoPlayNext: true,
       defaultPage: 'home'
-    }
+    },
+    extensions: [] // Ensure this line is present
   }
 });
 
@@ -68,11 +70,19 @@ function setupIPCHandlers() {
     return store.get('sources', []);
   });
   
-  ipcMain.handle('add-source', (event, source) => {
+  // Expects sourceData = { url, title, faviconUrl }
+  ipcMain.handle('add-source', (event, sourceData) => {
     const sources = store.get('sources', []);
-    sources.push(source);
+    const newSource = {
+      id: uuidv4(),
+      url: sourceData.url,
+      title: sourceData.title,
+      favicon: sourceData.faviconUrl, // Ensure key consistency
+      addedAt: Date.now()
+    };
+    sources.push(newSource);
     store.set('sources', sources);
-    return sources;
+    return sources; // Return all sources, including the new one with generated fields
   });
   
   ipcMain.handle('remove-source', (event, sourceId) => {
@@ -136,22 +146,22 @@ function setupIPCHandlers() {
   });
   
   // Extension management
-  ipcMain.handle('get-installed-extensions', () => {
-    // For now, return mock data instead of actual Chrome extensions
+  ipcMain.handle('get-installed-extensions', async () => {
+    // Return extensions from store, potentially updated after startup loading
     return store.get('extensions', []);
   });
   
-  ipcMain.handle('install-extension', (event, { extensionId, source }) => {
+  ipcMain.handle('install-extension', async (event, { extensionPath }) => {
     try {
-      // In a real app, we would install the extension
-      // For now, just add a mock extension to the store
+      const loadedExtension = await session.defaultSession.loadExtension(extensionPath, { allowFileAccess: true });
+      console.log(`Extension '${loadedExtension.name}' (ID: ${loadedExtension.id}) loaded into default session from path: ${extensionPath}`);
       const extensions = store.get('extensions', []);
       const newExtension = {
-        id: extensionId,
-        name: extensionId.split('/').pop() || `Extension ${extensionId}`,
-        version: '1.0.0',
-        enabled: true,
-        icon: 'assets/images/default-extension-icon.png'
+        id: loadedExtension.id,
+        name: loadedExtension.name,
+        version: loadedExtension.version,
+        path: extensionPath,
+        enabled: true
       };
       
       extensions.push(newExtension);
@@ -160,12 +170,13 @@ function setupIPCHandlers() {
       return newExtension;
     } catch (error) {
       console.error('Failed to install extension:', error);
-      return null;
+      return { error: error.message };
     }
   });
   
-  ipcMain.handle('uninstall-extension', (event, extensionId) => {
+  ipcMain.handle('uninstall-extension', async (event, extensionId) => {
     try {
+      await session.defaultSession.removeExtension(extensionId);
       const extensions = store.get('extensions', []);
       const filteredExtensions = extensions.filter(ext => ext.id !== extensionId);
       store.set('extensions', filteredExtensions);
@@ -182,10 +193,64 @@ function setupIPCHandlers() {
     shell.openPath(extensionsDir);
     return true;
   });
+
+  ipcMain.handle('select-extension-directory', async () => {
+    if (!mainWindow) {
+      console.error('Main window not available for dialog.');
+      return null;
+    }
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory']
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+      return result.filePaths[0];
+    } catch (e) {
+      console.error('Failed to show open dialog:', e);
+      return null;
+    }
+  });
+
+  ipcMain.handle('fetch-site-metadata', async (event, url) => {
+    try {
+      const response = await fetch(url, { redirect: 'follow', timeout: 5000 }); // 5s timeout
+      if (!response.ok) {
+        console.error(`Failed to fetch ${url}: ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const html = await response.text();
+
+      let title = new URL(url).hostname;
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if (titleMatch && titleMatch[1]) {
+        title = titleMatch[1].trim();
+      }
+
+      let faviconUrl = new URL('/favicon.ico', url).href;
+      const linkRegex = /<link\s+(?:[^>]*?\s+)?rel=(['"](?:shortcut icon|icon)['"])(?:[^>]*?\s+)?href=(['"]([^'"]+)['"])/gi;
+      let match;
+      // Search for best quality icon, e.g. sizes attribute, but keep it simple for now
+      // Last one found is often a good heuristic if multiple are present without sizes.
+      while ((match = linkRegex.exec(html)) !== null) {
+        faviconUrl = new URL(match[3], url).href;
+      }
+
+      return { title, faviconUrl };
+    } catch (error) {
+      console.error(`Error fetching metadata for ${url}:`, error);
+      const hostname = new URL(url).hostname;
+      return {
+        title: hostname,
+        faviconUrl: new URL('/favicon.ico', url).href
+      };
+    }
+  });
 }
 
 // Create main window when Electron is ready
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Register the app:// protocol for serving content
   protocol.registerFileProtocol('app', (request, callback) => {
     const url = request.url.substring(6); // Remove 'app://'
@@ -194,6 +259,30 @@ app.whenReady().then(() => {
   });
   
   createWindow();
+
+  // Load installed extensions on startup
+  let storedExtensions = store.get('extensions', []);
+  const successfullyLoadedExtensions = [];
+  for (const extensionToLoad of storedExtensions) {
+    if (extensionToLoad.enabled && extensionToLoad.path) {
+      try {
+        const loadedExtension = await session.defaultSession.loadExtension(extensionToLoad.path, { allowFileAccess: true });
+        console.log(`Reloaded extension '${loadedExtension.name}' (ID: ${loadedExtension.id}) into default session from path: ${extensionToLoad.path}`);
+        successfullyLoadedExtensions.push(extensionToLoad); // Push the original stored object
+      } catch (error) {
+        console.error(`Failed to load extension ${extensionToLoad.name} from ${extensionToLoad.path}:`, error);
+        // Extension failed to load, do not add it to successfullyLoadedExtensions,
+        // effectively removing it from the store for the next save.
+      }
+    } else if (!extensionToLoad.path) {
+      console.warn(`Extension ${extensionToLoad.name} is missing a path and will be removed.`);
+    } else {
+      // Extension is disabled but path is present, keep it.
+      successfullyLoadedExtensions.push(extensionToLoad);
+    }
+  }
+  // Update the store with only successfully loaded or valid disabled extensions
+  store.set('extensions', successfullyLoadedExtensions);
   
   app.on('activate', function () {
     // On macOS re-create a window when dock icon is clicked and no windows are open
