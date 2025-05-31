@@ -107,29 +107,33 @@ async function addSource(url) {
     
     // Auto-complete URL if needed
     let sourceUrl = url.trim();
-    
-    // Create source object
-    const source = {
-      url: sourceUrl,
-      title: sourceUrl,
-      favicon: window.anistream.urlToFaviconUrl(sourceUrl) || 'assets/images/default-favicon.png'
+    if (!sourceUrl.match(/^https?:\/\//)) {
+      sourceUrl = `https://${sourceUrl}`;
+    }
+    // Validate URL structure before fetching metadata
+    try {
+      new URL(sourceUrl);
+    } catch (e) {
+      showNotification('Invalid URL format', 'error');
+      // Reset UI
+      sourceUrlInput.disabled = false;
+      addSourceButton.disabled = false;
+      addSourceButton.innerHTML = '<i class="material-icons">add</i> Add';
+      return;
+    }
+
+    // Fetch metadata
+    const metadata = await window.anistream.fetchSiteMetadata(sourceUrl);
+
+    const sourceDataPayload = {
+      url: sourceUrl, // Send the validated and normalized URL
+      title: metadata.title, // Already includes fallback to hostname in preload/main
+      faviconUrl: metadata.faviconUrl || 'assets/images/default-favicon.png' // Use default if null/undefined
     };
     
-    // Try to fetch metadata
-    try {
-      const metadata = await window.anistream.fetchSiteMetadata(source.url);
-      if (metadata.title) {
-        source.title = metadata.title;
-      }
-      if (metadata.favicon) {
-        source.favicon = metadata.favicon;
-      }
-    } catch (metadataError) {
-      console.warn('Failed to fetch metadata:', metadataError);
-    }
-    
-    // Add to storage
-    sourcesState = await window.anistream.addSource(source);
+    // Add to storage by passing the payload
+    // The main process now handles ID and addedAt
+    sourcesState = await window.anistream.addSource(sourceDataPayload);
     
     // Clear input and render
     sourceUrlInput.value = '';

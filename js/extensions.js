@@ -226,41 +226,15 @@ async function browseExtensionDirectory() {
 /**
  * Show dialog to install a new extension
  */
-function showInstallExtensionDialog() {
-  // In a real app, this would show a dialog with options
-  const extensionUrl = prompt('Enter the URL or ID of the extension:');
-  
-  if (extensionUrl) {
-    installExtensionFromUrl(extensionUrl);
-  }
-}
-
-/**
- * Install a new extension from URL or ID
- * @param {string} extensionUrl - URL or ID of the extension
- */
-async function installExtensionFromUrl(extensionUrl) {
+async function showInstallExtensionDialog() {
   try {
-    // Show loading notification
-    showNotification('Installing extension...', 'info');
-    
-    // Install extension
-    const extension = await window.anistream.installExtension(extensionUrl, 'url');
-    
-    if (extension) {
-      // Add to local state
-      extensionsState.push(extension);
-      
-      // Update UI
-      renderExtensions();
-      
-      showNotification('Extension installed successfully', 'success');
-    } else {
-      showNotification('Failed to install extension', 'error');
+    const selectedPath = await window.anistream.selectExtensionDirectory();
+    if (selectedPath) {
+      await installExtensionFromPath(selectedPath);
     }
   } catch (error) {
-    console.error('Failed to install extension:', error);
-    showNotification('Failed to install extension: ' + error.message, 'error');
+    console.error('Error selecting extension directory:', error);
+    showNotification('Failed to open directory selector', 'error');
   }
 }
 
@@ -271,21 +245,24 @@ async function installExtensionFromUrl(extensionUrl) {
 async function installExtensionFromPath(extensionPath) {
   try {
     // Show loading notification
-    showNotification('Installing extension...', 'info');
+    showNotification('Installing extension from path...', 'info');
     
-    // Install extension
-    const extension = await window.anistream.installExtension(extensionPath, 'local');
+    // Install extension - main.js expects { extensionPath }
+    const result = await window.anistream.installExtension({ extensionPath });
     
-    if (extension) {
+    // The main process now returns an extension object or an error object
+    if (result && result.id) {
       // Add to local state
-      extensionsState.push(extension);
+      extensionsState.push(result);
       
       // Update UI
       renderExtensions();
       
-      showNotification('Extension installed successfully', 'success');
+      showNotification(`Extension "${result.name}" installed successfully`, 'success');
+    } else if (result && result.error) {
+      showNotification(`Failed to install extension: ${result.error}`, 'error');
     } else {
-      showNotification('Failed to install extension', 'error');
+      showNotification('Failed to install extension: Unknown error', 'error');
     }
   } catch (error) {
     console.error('Failed to install extension:', error);
